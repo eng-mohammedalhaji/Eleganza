@@ -96,6 +96,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasIndex(order => new { order.VendorId, order.Status });
             entity.Property(order => order.OrderNumber).HasMaxLength(40).IsRequired();
             entity.Property(order => order.IdempotencyKey).HasMaxLength(120);
+            entity.Property(order => order.IdempotencyFingerprint).HasMaxLength(64);
             entity.Property(order => order.CustomerName).HasMaxLength(120).IsRequired();
             entity.Property(order => order.CustomerPhone).HasMaxLength(30).IsRequired();
             entity.Property(order => order.City).HasMaxLength(80).IsRequired();

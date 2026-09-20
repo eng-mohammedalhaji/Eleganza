@@ -1,5 +1,6 @@
 using Eleganza.Application.Orders;
 using Eleganza.Contracts.Orders;
+using Eleganza.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,6 +11,13 @@ namespace Eleganza.Api.Controllers;
 [Route("api/vendor/orders")]
 public sealed class VendorOrdersController(OrderService orderService) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<OrderResponse>>> List(
+        [FromQuery] OrderStatus? status,
+        [FromQuery] int take = 50,
+        CancellationToken cancellationToken = default)
+        => Ok(await orderService.ListVendorAsync(status, take, cancellationToken));
+
     [HttpPost("{id:guid}/confirm")]
     public async Task<ActionResult<OrderResponse>> Confirm(Guid id, CancellationToken cancellationToken)
         => Ok(await orderService.ConfirmAsync(id, cancellationToken));

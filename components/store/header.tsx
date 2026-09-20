@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, Menu, Search, ShoppingBag, X } from "lucide-react";
+import { Heart, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/store/cart-context";
@@ -38,6 +38,9 @@ export function Header() {
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" asChild aria-label="البحث">
             <Link href="/shop"><Search className="h-5 w-5" /></Link>
+          </Button>
+          <Button variant="ghost" size="icon" asChild aria-label="الحساب" className="hidden sm:inline-flex">
+            <Link href="/account"><UserRound className="h-5 w-5" /></Link>
           </Button>
           <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="المفضلة">
             <Heart className="h-5 w-5" />

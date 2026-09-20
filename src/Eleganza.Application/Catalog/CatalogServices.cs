@@ -96,7 +96,7 @@ public sealed class ProductService(
 
         await products.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Map(product);
+        return Map(product, vendor.BusinessName, category.Name, category.Slug);
     }
 
     public async Task<ProductResponse> AddVariantAsync(
@@ -158,7 +158,7 @@ public sealed class ProductService(
         string? search,
         CancellationToken cancellationToken = default)
         => (await products.ListAsync(null, categoryId, ProductStatus.Published, search, cancellationToken))
-            .Select(Map).ToArray();
+            .Select(product => Map(product)).ToArray();
 
     public async Task<ProductResponse?> GetPublishedBySlugAsync(
         string slug,
@@ -171,7 +171,7 @@ public sealed class ProductService(
     public async Task<IReadOnlyList<ProductResponse>> ListAdminAsync(
         ProductStatus? status,
         CancellationToken cancellationToken = default)
-        => (await products.ListAsync(null, null, status, null, cancellationToken)).Select(Map).ToArray();
+        => (await products.ListAsync(null, null, status, null, cancellationToken)).Select(product => Map(product)).ToArray();
 
     private async Task<Product> GetOwnedProductAsync(Guid productId, CancellationToken cancellationToken)
     {
@@ -215,14 +215,18 @@ public sealed class ProductService(
         return slug;
     }
 
-    private static ProductResponse Map(Product product)
+    private static ProductResponse Map(
+        Product product,
+        string? vendorName = null,
+        string? categoryName = null,
+        string? categorySlug = null)
         => new(
             product.Id,
             product.VendorId,
             product.CategoryId,
-            product.Vendor?.BusinessName ?? string.Empty,
-            product.Category?.Name ?? string.Empty,
-            product.Category?.Slug ?? string.Empty,
+            vendorName ?? product.Vendor?.BusinessName ?? string.Empty,
+            categoryName ?? product.Category?.Name ?? string.Empty,
+            categorySlug ?? product.Category?.Slug ?? string.Empty,
             product.Name,
             product.Slug,
             product.Description,

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [liked, setLiked] = useState(false);
+  const defaultVariant = product.variants?.[0];
 
   return (
     <article className="group">
@@ -32,7 +33,7 @@ export function ProductCard({ product }: { product: Product }) {
           <Heart className={`h-4 w-4 ${liked ? "fill-primary text-primary" : ""}`} />
         </Button>
         <div className="absolute inset-x-4 bottom-4 translate-y-14 opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-          <Button className="w-full bg-white text-primary hover:bg-white/90" onClick={() => addItem(product)}>
+          <Button className="w-full bg-white text-primary hover:bg-white/90" onClick={() => addItem(product, { size: defaultVariant?.size, color: defaultVariant?.color, variantId: defaultVariant?.id })}>
             <ShoppingBag className="ml-2 h-4 w-4" />
             أضف للسلة
           </Button>

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Eleganza.Application.Abstractions;
 using Eleganza.Contracts.Orders;
@@ -21,9 +23,15 @@ public sealed class OrderService(
         CancellationToken cancellationToken = default)
     {
         var normalizedIdempotencyKey = NormalizeIdempotencyKey(idempotencyKey);
+        var requestFingerprint = CreateRequestFingerprint(request);
         var existingOrder = await orders.GetByIdempotencyKeyAsync(normalizedIdempotencyKey, cancellationToken);
         if (existingOrder is not null)
         {
+            if (!string.Equals(existingOrder.IdempotencyFingerprint, requestFingerprint, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The idempotency key was already used with a different request.");
+            }
+
             return Map(existingOrder);
         }
 
@@ -95,7 +103,8 @@ public sealed class OrderService(
             subtotal,
             shippingFee,
             PaymentMethod.CashOnDelivery,
-            normalizedIdempotencyKey);
+            normalizedIdempotencyKey,
+            requestFingerprint);
 
         foreach (var prepared in preparedItems)
         {
@@ -120,6 +129,23 @@ public sealed class OrderService(
         var customerId = currentUser.UserId ?? throw new UnauthorizedAccessException("Authentication is required.");
         return (await orders.ListByCustomerAsync(customerId, cancellationToken)).Select(Map).ToArray();
     }
+
+    public async Task<IReadOnlyList<OrderResponse>> ListVendorAsync(
+        OrderStatus? status,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = currentUser.UserId ?? throw new UnauthorizedAccessException("Authentication is required.");
+        var vendor = await vendors.GetByOwnerIdAsync(ownerId, cancellationToken)
+            ?? throw new KeyNotFoundException("Vendor profile was not found.");
+        return (await orders.ListByVendorAsync(vendor.Id, status, take, cancellationToken)).Select(Map).ToArray();
+    }
+
+    public async Task<IReadOnlyList<OrderResponse>> ListAdminAsync(
+        OrderStatus? status,
+        int take,
+        CancellationToken cancellationToken = default)
+        => (await orders.ListAsync(status, take, cancellationToken)).Select(Map).ToArray();
 
     public async Task<OrderResponse> ConfirmAsync(Guid orderId, CancellationToken cancellationToken = default)
     {
@@ -296,6 +322,24 @@ public sealed class OrderService(
         }
 
         return normalized;
+    }
+
+    private static string CreateRequestFingerprint(CreateOrderRequest request)
+    {
+        var canonical = JsonSerializer.Serialize(new
+        {
+            customerName = request.CustomerName?.Trim(),
+            customerPhone = request.CustomerPhone?.Trim(),
+            city = request.City?.Trim(),
+            address = request.Address?.Trim(),
+            notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            items = request.Items?
+                .OrderBy(item => item.ProductId)
+                .ThenBy(item => item.VariantId)
+                .Select(item => new { item.ProductId, item.VariantId, item.Quantity }),
+        });
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
     }
 
     private static OrderResponse Map(Order order)

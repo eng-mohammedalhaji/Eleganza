@@ -3,13 +3,28 @@ using Eleganza.Application;
 using Eleganza.Infrastructure;
 using Eleganza.Infrastructure.Data;
 using Eleganza.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddHealthChecks();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("auth", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 10;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueLimit = 0;
+        limiterOptions.AutoReplenishment = true;
+    });
+});
 builder.Services.AddCors(options =>
 {
     var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
@@ -36,11 +51,18 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseCors("Frontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>();
+var authGroup = app.MapGroup("/api/auth").RequireRateLimiting("auth");
+authGroup.MapIdentityApi<ApplicationUser>();
+authGroup.MapPost("/logout", async (SignInManager<ApplicationUser> signInManager) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.Ok();
+}).RequireAuthorization();
 app.MapHealthChecks("/health");
 
 app.Run();

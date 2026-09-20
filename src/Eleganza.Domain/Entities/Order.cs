@@ -20,7 +20,8 @@ public sealed class Order
         decimal subtotal,
         decimal shippingFee,
         PaymentMethod paymentMethod,
-        string? idempotencyKey)
+        string? idempotencyKey,
+        string? idempotencyFingerprint)
     {
         Id = Guid.NewGuid();
         OrderNumber = orderNumber;
@@ -36,6 +37,7 @@ public sealed class Order
         Total = subtotal + shippingFee;
         PaymentMethod = paymentMethod;
         IdempotencyKey = idempotencyKey;
+        IdempotencyFingerprint = idempotencyFingerprint;
         Status = OrderStatus.Pending;
         PaymentStatus = PaymentStatus.CashOnDeliveryPending;
         ShippingStatus = ShippingStatus.NotSubmitted;
@@ -47,6 +49,7 @@ public sealed class Order
     public Guid Id { get; private set; }
     public string OrderNumber { get; private set; } = string.Empty;
     public string? IdempotencyKey { get; private set; }
+    public string? IdempotencyFingerprint { get; private set; }
     public Guid VendorId { get; private set; }
     public Guid? CustomerId { get; private set; }
     public string CustomerName { get; private set; } = string.Empty;
@@ -81,7 +84,8 @@ public sealed class Order
         decimal subtotal,
         decimal shippingFee,
         PaymentMethod paymentMethod,
-        string? idempotencyKey = null)
+        string? idempotencyKey = null,
+        string? idempotencyFingerprint = null)
     {
         if (subtotal <= 0)
         {
@@ -94,7 +98,7 @@ public sealed class Order
         }
 
         return new Order(orderNumber, vendorId, customerId, customerName, customerPhone, city, address,
-            notes, subtotal, shippingFee, paymentMethod, idempotencyKey);
+            notes, subtotal, shippingFee, paymentMethod, idempotencyKey, idempotencyFingerprint);
     }
 
     public void AddItem(OrderItem item)

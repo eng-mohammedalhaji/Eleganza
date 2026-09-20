@@ -1,5 +1,6 @@
 using Eleganza.Application.Abstractions;
 using Eleganza.Domain.Entities;
+using Eleganza.Domain.Enums;
 using Eleganza.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,44 @@ public sealed class OrderRepository(AppDbContext db) : IOrderRepository
             .Where(order => order.CustomerId == customerId)
             .OrderByDescending(order => order.CreatedAt)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Order>> ListByVendorAsync(
+        Guid vendorId,
+        OrderStatus? status,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = QueryWithDetails().Where(order => order.VendorId == vendorId);
+        if (status.HasValue)
+        {
+            query = query.Where(order => order.Status == status.Value);
+        }
+
+        return await query.OrderByDescending(order => order.CreatedAt)
+            .Take(Math.Clamp(take, 1, 100))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Order>> ListAsync(
+        OrderStatus? status,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = QueryWithDetails();
+        if (status.HasValue)
+        {
+            query = query.Where(order => order.Status == status.Value);
+        }
+
+        return await query.OrderByDescending(order => order.CreatedAt)
+            .Take(Math.Clamp(take, 1, 100))
+            .ToListAsync(cancellationToken);
+    }
+
+    private IQueryable<Order> QueryWithDetails()
+        => db.Orders.AsNoTracking()
+            .Include(order => order.Items)
+            .Include(order => order.StatusHistory);
 }
 
 public sealed class OutboxRepository(AppDbContext db) : IOutboxRepository

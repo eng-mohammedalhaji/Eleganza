@@ -19,7 +19,8 @@ public sealed class Order
         string? notes,
         decimal subtotal,
         decimal shippingFee,
-        PaymentMethod paymentMethod)
+        PaymentMethod paymentMethod,
+        string? idempotencyKey)
     {
         Id = Guid.NewGuid();
         OrderNumber = orderNumber;
@@ -34,15 +35,18 @@ public sealed class Order
         ShippingFee = shippingFee;
         Total = subtotal + shippingFee;
         PaymentMethod = paymentMethod;
+        IdempotencyKey = idempotencyKey;
         Status = OrderStatus.Pending;
         PaymentStatus = PaymentStatus.CashOnDeliveryPending;
         ShippingStatus = ShippingStatus.NotSubmitted;
         CreatedAt = DateTimeOffset.UtcNow;
         UpdatedAt = CreatedAt;
+        StatusHistory.Add(OrderStatusHistory.Create(Id, null, Status, null, "Order created"));
     }
 
     public Guid Id { get; private set; }
     public string OrderNumber { get; private set; } = string.Empty;
+    public string? IdempotencyKey { get; private set; }
     public Guid VendorId { get; private set; }
     public Guid? CustomerId { get; private set; }
     public string CustomerName { get; private set; } = string.Empty;
@@ -59,9 +63,11 @@ public sealed class Order
     public ShippingStatus ShippingStatus { get; private set; }
     public string? CancellationReason { get; private set; }
     public string? ExternalShippingOrderId { get; private set; }
+    public string? ShippingError { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public List<OrderItem> Items { get; private set; } = [];
+    public List<OrderStatusHistory> StatusHistory { get; private set; } = [];
 
     public static Order Create(
         string orderNumber,
@@ -74,7 +80,8 @@ public sealed class Order
         string? notes,
         decimal subtotal,
         decimal shippingFee,
-        PaymentMethod paymentMethod)
+        PaymentMethod paymentMethod,
+        string? idempotencyKey = null)
     {
         if (subtotal <= 0)
         {
@@ -87,7 +94,7 @@ public sealed class Order
         }
 
         return new Order(orderNumber, vendorId, customerId, customerName, customerPhone, city, address,
-            notes, subtotal, shippingFee, paymentMethod);
+            notes, subtotal, shippingFee, paymentMethod, idempotencyKey);
     }
 
     public void AddItem(OrderItem item)
@@ -100,44 +107,52 @@ public sealed class Order
         Items.Add(item);
     }
 
-    public void Confirm()
+    public void Confirm(Guid? actorUserId = null)
     {
         if (Status != OrderStatus.Pending)
         {
             throw new InvalidOperationException("Only pending orders can be confirmed.");
         }
 
-        Status = OrderStatus.Confirmed;
-        Touch();
+        ChangeStatus(OrderStatus.Confirmed, actorUserId);
     }
 
-    public void Reject(string? reason)
+    public void Reject(string? reason, Guid? actorUserId = null)
     {
         if (Status != OrderStatus.Pending)
         {
             throw new InvalidOperationException("Only pending orders can be rejected.");
         }
 
-        Status = OrderStatus.Rejected;
         CancellationReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
-        Touch();
+        ChangeStatus(OrderStatus.Rejected, actorUserId, reason);
     }
 
-    public void Cancel(string? reason)
+    public void Cancel(string? reason, Guid? actorUserId = null)
     {
         if (Status is not OrderStatus.Pending and not OrderStatus.Confirmed)
         {
             throw new InvalidOperationException("Only pending or confirmed orders can be cancelled.");
         }
 
-        Status = OrderStatus.Cancelled;
         CancellationReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
-        Touch();
+        ChangeStatus(OrderStatus.Cancelled, actorUserId, reason);
     }
 
     public void SetShippingStatus(ShippingStatus status)
     {
         ShippingStatus = status;
+        if (status != ShippingStatus.Failed)
+        {
+            ShippingError = null;
+        }
+        Touch();
+    }
+
+    public void MarkShippingFailed(string error)
+    {
+        ShippingStatus = ShippingStatus.Failed;
+        ShippingError = string.IsNullOrWhiteSpace(error) ? "Shipping submission failed." : error.Trim()[..Math.Min(error.Trim().Length, 1000)];
         Touch();
     }
 
@@ -152,7 +167,7 @@ public sealed class Order
         Touch();
     }
 
-    public void MarkCollected()
+    public void MarkCollected(Guid? actorUserId = null)
     {
         if (PaymentMethod != PaymentMethod.CashOnDelivery || ShippingStatus != ShippingStatus.Delivered)
         {
@@ -160,7 +175,14 @@ public sealed class Order
         }
 
         PaymentStatus = PaymentStatus.Collected;
-        Status = OrderStatus.Completed;
+        ChangeStatus(OrderStatus.Completed, actorUserId);
+    }
+
+    private void ChangeStatus(OrderStatus nextStatus, Guid? actorUserId, string? reason = null)
+    {
+        var previousStatus = Status;
+        Status = nextStatus;
+        StatusHistory.Add(OrderStatusHistory.Create(Id, previousStatus, nextStatus, actorUserId, reason));
         Touch();
     }
 

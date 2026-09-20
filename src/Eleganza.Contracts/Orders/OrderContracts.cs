@@ -25,6 +25,14 @@ public sealed record OrderItemResponse(
     decimal UnitPrice,
     decimal LineTotal);
 
+public sealed record OrderStatusHistoryResponse(
+    Guid Id,
+    OrderStatus? FromStatus,
+    OrderStatus ToStatus,
+    Guid? ActorUserId,
+    string? Reason,
+    DateTimeOffset CreatedAt);
+
 public sealed record OrderResponse(
     Guid Id,
     string OrderNumber,
@@ -43,5 +51,7 @@ public sealed record OrderResponse(
     PaymentStatus PaymentStatus,
     ShippingStatus ShippingStatus,
     string? ExternalShippingOrderId,
+    string? ShippingError,
     IReadOnlyList<OrderItemResponse> Items,
+    IReadOnlyList<OrderStatusHistoryResponse> StatusHistory,
     DateTimeOffset CreatedAt);

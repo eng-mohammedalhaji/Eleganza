@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IVendorShippingAccountRepository, VendorShippingAccountRepository>();
         services.AddScoped<ISecretProtector, DataProtectionSecretProtector>();
         services.AddDataProtection();
@@ -46,6 +47,8 @@ public static class DependencyInjection
         services.Configure<ShippingOptions>(configuration.GetSection("Shipping"));
         services.AddSingleton<IShippingFeeCalculator, FixedShippingFeeCalculator>();
         services.AddScoped<IIdentityRoleService, IdentityRoleService>();
+        services.Configure<OutboxOptions>(configuration.GetSection("Outbox"));
+        services.AddHostedService<ShippingOutboxWorker>();
 
         return services;
     }

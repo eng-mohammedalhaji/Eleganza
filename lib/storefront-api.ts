@@ -160,7 +160,7 @@ export function isApiBackedProduct(product: Product, variantId?: string) {
   return Boolean(product.apiId && variantId);
 }
 
-export async function createOrder(payload: CreateOrderPayload): Promise<CreatedOrder> {
+export async function createOrder(payload: CreateOrderPayload, idempotencyKey: string): Promise<CreatedOrder> {
   const baseUrl = getApiBaseUrl();
   if (!baseUrl) {
     throw new Error("API URL is not configured.");
@@ -168,7 +168,7 @@ export async function createOrder(payload: CreateOrderPayload): Promise<CreatedO
 
   const response = await fetch(`${baseUrl}/api/orders`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
     credentials: "include",
     body: JSON.stringify(payload),
   });

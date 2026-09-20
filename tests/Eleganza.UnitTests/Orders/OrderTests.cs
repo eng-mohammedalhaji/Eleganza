@@ -42,6 +42,19 @@ public sealed class OrderTests
         order.MarkCollected();
 
         Assert.Equal(OrderStatus.Completed, order.Status);
+        Assert.Collection(
+            order.StatusHistory,
+            created => Assert.Equal(OrderStatus.Pending, created.ToStatus),
+            confirmed =>
+            {
+                Assert.Equal(OrderStatus.Pending, confirmed.FromStatus);
+                Assert.Equal(OrderStatus.Confirmed, confirmed.ToStatus);
+            },
+            completed =>
+            {
+                Assert.Equal(OrderStatus.Confirmed, completed.FromStatus);
+                Assert.Equal(OrderStatus.Completed, completed.ToStatus);
+            });
         Assert.Throws<InvalidOperationException>(() => order.Cancel("Too late"));
     }
 
@@ -51,6 +64,29 @@ public sealed class OrderTests
         var order = CreateOrder();
 
         Assert.Throws<InvalidOperationException>(() => order.MarkCollected());
+    }
+
+    [Fact]
+    public void Order_keeps_the_idempotency_key_for_safe_retries()
+    {
+        var product = Product.CreateDraft(Guid.NewGuid(), Guid.NewGuid(), "Dress", "dress-retry", "Description");
+        var variant = product.AddVariant("38", "Black", "D-38-B-RETRY", 250m, 3);
+        var order = Order.Create(
+            "EL-TEST-RETRY",
+            product.VendorId,
+            null,
+            "Sara",
+            "0910000000",
+            "Tripoli",
+            "Street 1",
+            null,
+            250m,
+            0m,
+            PaymentMethod.CashOnDelivery,
+            "checkout-retry-key-001");
+        order.AddItem(OrderItem.Create(order.Id, product.Id, variant.Id, product.Name, variant.Size, variant.Color, 1, variant.Price));
+
+        Assert.Equal("checkout-retry-key-001", order.IdempotencyKey);
     }
 
     private static Order CreateOrder()

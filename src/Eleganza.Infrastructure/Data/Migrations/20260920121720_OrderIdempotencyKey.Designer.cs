@@ -3,6 +3,7 @@ using System;
 using Eleganza.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Eleganza.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260920121720_OrderIdempotencyKey")]
+    partial class OrderIdempotencyKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -211,41 +214,6 @@ namespace Eleganza.Infrastructure.Data.Migrations
                     b.HasIndex("OrderId");
 
                     b.ToTable("order_items", (string)null);
-                });
-
-            modelBuilder.Entity("Eleganza.Domain.Entities.OrderStatusHistory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ActorUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("FromStatus")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.Property<Guid>("OrderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("ToStatus")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId", "CreatedAt");
-
-                    b.ToTable("order_status_history", (string)null);
                 });
 
             modelBuilder.Entity("Eleganza.Domain.Entities.Product", b =>
@@ -699,15 +667,6 @@ namespace Eleganza.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Eleganza.Domain.Entities.OrderStatusHistory", b =>
-                {
-                    b.HasOne("Eleganza.Domain.Entities.Order", null)
-                        .WithMany("StatusHistory")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Eleganza.Domain.Entities.Product", b =>
                 {
                     b.HasOne("Eleganza.Domain.Entities.Category", "Category")
@@ -799,8 +758,6 @@ namespace Eleganza.Infrastructure.Data.Migrations
             modelBuilder.Entity("Eleganza.Domain.Entities.Order", b =>
                 {
                     b.Navigation("Items");
-
-                    b.Navigation("StatusHistory");
                 });
 
             modelBuilder.Entity("Eleganza.Domain.Entities.Product", b =>

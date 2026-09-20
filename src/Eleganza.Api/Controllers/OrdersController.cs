@@ -13,8 +13,9 @@ public sealed class OrdersController(OrderService orderService) : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<OrderResponse>> Create(
         CreateOrderRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken)
-        => StatusCode(StatusCodes.Status201Created, await orderService.CreateAsync(request, cancellationToken));
+        => StatusCode(StatusCodes.Status201Created, await orderService.CreateAsync(request, idempotencyKey, cancellationToken));
 
     [HttpGet("mine")]
     [Authorize]

@@ -25,6 +25,10 @@ public sealed class VendorOrdersController(OrderService orderService) : Controll
     public async Task<ActionResult<OrderResponse>> Delivered(Guid id, CancellationToken cancellationToken)
         => Ok(await orderService.MarkDeliveredAsync(id, cancellationToken));
 
+    [HttpPost("{id:guid}/retry-shipping")]
+    public async Task<ActionResult<OrderResponse>> RetryShipping(Guid id, CancellationToken cancellationToken)
+        => Ok(await orderService.RetryShippingAsync(id, cancellationToken));
+
     [HttpPost("{id:guid}/collected")]
     public async Task<ActionResult<OrderResponse>> Collected(Guid id, CancellationToken cancellationToken)
         => Ok(await orderService.MarkCollectedAsync(id, cancellationToken));

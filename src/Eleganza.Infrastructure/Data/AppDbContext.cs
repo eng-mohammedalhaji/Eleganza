@@ -16,6 +16,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderStatusHistory> OrderStatusHistory => Set<OrderStatusHistory>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<VendorShippingAccount> VendorShippingAccounts => Set<VendorShippingAccount>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -89,9 +91,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.ToTable("orders");
             entity.HasKey(order => order.Id);
             entity.HasIndex(order => order.OrderNumber).IsUnique();
+            entity.HasIndex(order => order.IdempotencyKey).IsUnique();
             entity.HasIndex(order => new { order.CustomerId, order.CreatedAt });
             entity.HasIndex(order => new { order.VendorId, order.Status });
             entity.Property(order => order.OrderNumber).HasMaxLength(40).IsRequired();
+            entity.Property(order => order.IdempotencyKey).HasMaxLength(120);
             entity.Property(order => order.CustomerName).HasMaxLength(120).IsRequired();
             entity.Property(order => order.CustomerPhone).HasMaxLength(30).IsRequired();
             entity.Property(order => order.City).HasMaxLength(80).IsRequired();
@@ -106,7 +110,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(order => order.ShippingStatus).HasConversion<string>().HasMaxLength(30).IsRequired();
             entity.Property(order => order.CancellationReason).HasMaxLength(500);
             entity.Property(order => order.ExternalShippingOrderId).HasMaxLength(120);
+            entity.Property(order => order.ShippingError).HasMaxLength(1000);
             entity.HasMany(order => order.Items).WithOne().HasForeignKey(item => item.OrderId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(order => order.StatusHistory).WithOne().HasForeignKey(history => history.OrderId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<OrderItem>(entity =>
@@ -118,6 +124,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(item => item.Color).HasMaxLength(50).IsRequired();
             entity.Property(item => item.UnitPrice).HasPrecision(18, 2).IsRequired();
             entity.Property(item => item.LineTotal).HasPrecision(18, 2).IsRequired();
+        });
+
+        builder.Entity<OrderStatusHistory>(entity =>
+        {
+            entity.ToTable("order_status_history");
+            entity.HasKey(history => history.Id);
+            entity.HasIndex(history => new { history.OrderId, history.CreatedAt });
+            entity.Property(history => history.FromStatus).HasConversion<string>().HasMaxLength(30);
+            entity.Property(history => history.ToStatus).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(history => history.Reason).HasMaxLength(500);
+        });
+
+        builder.Entity<OutboxMessage>(entity =>
+        {
+            entity.ToTable("outbox_messages");
+            entity.HasKey(message => message.Id);
+            entity.HasIndex(message => new { message.ProcessedAt, message.DeadLetteredAt, message.NextAttemptAt });
+            entity.Property(message => message.Type).HasMaxLength(120).IsRequired();
+            entity.Property(message => message.Payload).HasColumnType("text").IsRequired();
+            entity.Property(message => message.LastError).HasMaxLength(1000);
         });
 
         builder.Entity<VendorShippingAccount>(entity =>

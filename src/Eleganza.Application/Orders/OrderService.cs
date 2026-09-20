@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Eleganza.Application.Abstractions;
 using Eleganza.Contracts.Orders;
 using Eleganza.Domain.Entities;
@@ -10,13 +11,22 @@ public sealed class OrderService(
     IProductRepository products,
     IVendorRepository vendors,
     IShippingFeeCalculator shippingFees,
+    IOutboxRepository outbox,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser)
 {
     public async Task<OrderResponse> CreateAsync(
         CreateOrderRequest request,
+        string? idempotencyKey,
         CancellationToken cancellationToken = default)
     {
+        var normalizedIdempotencyKey = NormalizeIdempotencyKey(idempotencyKey);
+        var existingOrder = await orders.GetByIdempotencyKeyAsync(normalizedIdempotencyKey, cancellationToken);
+        if (existingOrder is not null)
+        {
+            return Map(existingOrder);
+        }
+
         if (request.Items is null || request.Items.Count is < 1 or > 50)
         {
             throw new ArgumentException("An order must contain between 1 and 50 items.", nameof(request.Items));
@@ -84,7 +94,8 @@ public sealed class OrderService(
             string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
             subtotal,
             shippingFee,
-            PaymentMethod.CashOnDelivery);
+            PaymentMethod.CashOnDelivery,
+            normalizedIdempotencyKey);
 
         foreach (var prepared in preparedItems)
         {
@@ -114,7 +125,34 @@ public sealed class OrderService(
     {
         var order = await GetRequiredAsync(orderId, cancellationToken);
         await RequireVendorAccessAsync(order.VendorId, cancellationToken);
-        order.Confirm();
+        order.Confirm(currentUser.UserId);
+        await outbox.AddAsync(OutboxMessage.Create(
+            OutboxMessageTypes.SubmitShippingOrder,
+            JsonSerializer.Serialize(new SubmitShippingOrderPayload(order.Id))), cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Map(order);
+    }
+
+    public async Task<OrderResponse> RetryShippingAsync(
+        Guid orderId,
+        CancellationToken cancellationToken = default)
+    {
+        var order = await GetRequiredAsync(orderId, cancellationToken);
+        await RequireVendorAccessAsync(order.VendorId, cancellationToken);
+        if (order.Status != OrderStatus.Confirmed)
+        {
+            throw new InvalidOperationException("Only confirmed orders can be submitted for shipping.");
+        }
+
+        if (order.ShippingStatus is not ShippingStatus.Failed and not ShippingStatus.NotSubmitted)
+        {
+            throw new InvalidOperationException("This order is already being processed by the shipping provider.");
+        }
+
+        order.SetShippingStatus(ShippingStatus.NotSubmitted);
+        await outbox.AddAsync(OutboxMessage.Create(
+            OutboxMessageTypes.SubmitShippingOrder,
+            JsonSerializer.Serialize(new SubmitShippingOrderPayload(order.Id))), cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Map(order);
     }
@@ -127,7 +165,7 @@ public sealed class OrderService(
         var order = await GetRequiredAsync(orderId, cancellationToken);
         await RequireVendorAccessAsync(order.VendorId, cancellationToken);
         await ReleaseReservationsAsync(order, cancellationToken);
-        order.Reject(reason);
+        order.Reject(reason, currentUser.UserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Map(order);
     }
@@ -147,7 +185,7 @@ public sealed class OrderService(
         }
 
         await ReleaseReservationsAsync(order, cancellationToken);
-        order.Cancel(reason);
+        order.Cancel(reason, currentUser.UserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Map(order);
     }
@@ -171,7 +209,7 @@ public sealed class OrderService(
     {
         var order = await GetRequiredAsync(orderId, cancellationToken);
         await RequireVendorAccessAsync(order.VendorId, cancellationToken);
-        order.MarkCollected();
+        order.MarkCollected(currentUser.UserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Map(order);
     }
@@ -249,6 +287,17 @@ public sealed class OrderService(
         return normalized;
     }
 
+    private static string NormalizeIdempotencyKey(string? value)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized) || normalized.Length is < 16 or > 120)
+        {
+            throw new ArgumentException("Idempotency-Key must be between 16 and 120 characters.", nameof(value));
+        }
+
+        return normalized;
+    }
+
     private static OrderResponse Map(Order order)
         => new(
             order.Id,
@@ -268,6 +317,7 @@ public sealed class OrderService(
             order.PaymentStatus,
             order.ShippingStatus,
             order.ExternalShippingOrderId,
+            order.ShippingError,
             order.Items.Select(item => new OrderItemResponse(
                 item.ProductId,
                 item.ProductVariantId,
@@ -277,5 +327,14 @@ public sealed class OrderService(
                 item.Quantity,
                 item.UnitPrice,
                 item.LineTotal)).ToArray(),
+            order.StatusHistory.OrderBy(history => history.CreatedAt).Select(history => new OrderStatusHistoryResponse(
+                history.Id,
+                history.FromStatus,
+                history.ToStatus,
+                history.ActorUserId,
+                history.Reason,
+                history.CreatedAt)).ToArray(),
             order.CreatedAt);
+
+    private sealed record SubmitShippingOrderPayload(Guid OrderId);
 }

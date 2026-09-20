@@ -31,7 +31,13 @@ public sealed class ProductRepository(AppDbContext db) : IProductRepository
 
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         => db.Products.Include(product => product.Variants).Include(product => product.Media)
+            .Include(product => product.Category).Include(product => product.Vendor)
             .SingleOrDefaultAsync(product => product.Id == id, cancellationToken);
+
+    public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default)
+        => db.Products.Include(product => product.Variants).Include(product => product.Media)
+            .Include(product => product.Category).Include(product => product.Vendor)
+            .SingleOrDefaultAsync(product => product.Slug == slug, cancellationToken);
 
     public Task<bool> SlugExistsAsync(
         string slug,
@@ -49,6 +55,8 @@ public sealed class ProductRepository(AppDbContext db) : IProductRepository
         var query = db.Products.AsNoTracking()
             .Include(product => product.Variants)
             .Include(product => product.Media)
+            .Include(product => product.Category)
+            .Include(product => product.Vendor)
             .AsQueryable();
 
         if (vendorId.HasValue)

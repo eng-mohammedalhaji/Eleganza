@@ -32,6 +32,8 @@ public sealed class Product
     public bool IsFeatured { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
+    public Vendor? Vendor { get; private set; }
+    public Category? Category { get; private set; }
     public List<ProductVariant> Variants { get; private set; } = [];
     public List<ProductMedia> Media { get; private set; } = [];
 

@@ -160,6 +160,14 @@ public sealed class ProductService(
         => (await products.ListAsync(null, categoryId, ProductStatus.Published, search, cancellationToken))
             .Select(Map).ToArray();
 
+    public async Task<ProductResponse?> GetPublishedBySlugAsync(
+        string slug,
+        CancellationToken cancellationToken = default)
+    {
+        var product = await products.GetBySlugAsync(slug.Trim().ToLowerInvariant(), cancellationToken);
+        return product is null || product.Status != ProductStatus.Published ? null : Map(product);
+    }
+
     public async Task<IReadOnlyList<ProductResponse>> ListAdminAsync(
         ProductStatus? status,
         CancellationToken cancellationToken = default)
@@ -212,6 +220,9 @@ public sealed class ProductService(
             product.Id,
             product.VendorId,
             product.CategoryId,
+            product.Vendor?.BusinessName ?? string.Empty,
+            product.Category?.Name ?? string.Empty,
+            product.Category?.Slug ?? string.Empty,
             product.Name,
             product.Slug,
             product.Description,

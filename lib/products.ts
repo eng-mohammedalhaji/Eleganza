@@ -1,3 +1,11 @@
+export type StorefrontVariant = {
+  id: string;
+  size: string;
+  color: string;
+  price: number;
+  stock: number;
+};
+
 export type Product = {
   id: string;
   slug: string;
@@ -13,6 +21,10 @@ export type Product = {
   featured?: boolean;
   image: string;
   accent: string;
+  apiId?: string;
+  vendorId?: string;
+  categoryId?: string;
+  variants?: StorefrontVariant[];
 };
 
 export const categories = [

@@ -23,13 +23,13 @@ src/Eleganza.Contracts
 يتطلب المشروع Node.js 18.18 أو أحدث.
 
 ```bash
-npm install
+pnpm install
 ```
 
 في طرفية ثانية:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 ثم افتح `http://localhost:3000`.
@@ -49,7 +49,7 @@ dotnet run --project src/Eleganza.Api
 
 يعمل فحص الصحة على `/health`.
 
-الواجهة الحالية تحتوي على بيانات عرض مؤقتة في `lib/products.ts` لبعض الشاشات. عند اكتمال ترحيل الكتالوج، ستتصل الواجهة بـ ASP.NET Core عبر `NEXT_PUBLIC_API_URL`، وتبقى PostgreSQL مصدر الحقيقة الوحيد للبيانات.
+الكتالوج والـ Checkout يتصلان بـ ASP.NET Core عبر `NEXT_PUBLIC_API_URL`. عند تشغيل البيئة التطويرية، يطبّق الـ API الـ migrations ويزرع كتالوجًا تجريبيًا تلقائيًا. تستخدم الواجهة `lib/products.ts` كـ fallback بصري فقط عندما لا يكون API URL مضبوطًا أو أثناء تطوير الواجهة دون Backend.
 
 ## المسارات
 

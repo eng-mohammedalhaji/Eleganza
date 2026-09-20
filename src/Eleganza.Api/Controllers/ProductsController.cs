@@ -18,6 +18,16 @@ public sealed class ProductsController(ProductService productService) : Controll
         CancellationToken cancellationToken)
         => Ok(await productService.ListPublishedAsync(categoryId, search, cancellationToken));
 
+    [HttpGet("{slug}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ProductResponse>> GetBySlug(
+        string slug,
+        CancellationToken cancellationToken)
+    {
+        var product = await productService.GetPublishedBySlugAsync(slug, cancellationToken);
+        return product is null ? NotFound() : Ok(product);
+    }
+
     [HttpPost]
     [Authorize(Roles = "VendorOwner")]
     public async Task<ActionResult<ProductResponse>> Create(

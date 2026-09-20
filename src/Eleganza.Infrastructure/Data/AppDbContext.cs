@@ -57,7 +57,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(product => product.Slug).HasMaxLength(100).IsRequired();
             entity.Property(product => product.Description).HasMaxLength(5000).IsRequired();
             entity.Property(product => product.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
-            entity.HasOne<Category>().WithMany().HasForeignKey(product => product.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(product => product.Category).WithMany().HasForeignKey(product => product.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(product => product.Vendor).WithMany().HasForeignKey(product => product.VendorId).OnDelete(DeleteBehavior.Restrict);
             entity.HasMany(product => product.Variants).WithOne().HasForeignKey(variant => variant.ProductId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(product => product.Media).WithOne().HasForeignKey(media => media.ProductId).OnDelete(DeleteBehavior.Cascade);
         });

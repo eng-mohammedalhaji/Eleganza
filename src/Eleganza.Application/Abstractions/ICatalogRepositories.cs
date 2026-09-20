@@ -15,6 +15,7 @@ public interface IProductRepository
 {
     Task AddAsync(Product product, CancellationToken cancellationToken = default);
     Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<bool> SlugExistsAsync(string slug, Guid? exceptId = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Product>> ListAsync(
         Guid? vendorId,

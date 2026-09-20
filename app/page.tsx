@@ -3,9 +3,11 @@ import { ArrowLeft, ArrowUpLeft, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/store/product-card";
-import { categories, products } from "@/lib/products";
+import { getStorefrontCategories, getStorefrontProducts } from "@/lib/storefront-api";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const products = await getStorefrontProducts();
+  const categories = await getStorefrontCategories(products);
   const featured = products.filter((product) => product.featured).slice(0, 4);
 
   return (

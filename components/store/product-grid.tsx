@@ -2,7 +2,7 @@
 
 import { Search, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
-import { products, type Product } from "@/lib/products";
+import type { Product } from "@/lib/products";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/store/product-card";
@@ -15,13 +15,13 @@ const categoryLabels: Record<string, string> = {
   modest: "محتشم",
 };
 
-export function ProductGrid({ initialCategory = "all" }: { initialCategory?: string }) {
+export function ProductGrid({ initialProducts, initialCategory = "all" }: { initialProducts: Product[]; initialCategory?: string }) {
   const [category, setCategory] = useState(initialCategory);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("featured");
 
   const filtered = useMemo(() => {
-    const result = products.filter((product) => {
+    const result = initialProducts.filter((product) => {
       const matchesCategory = category === "all" || product.category === category;
       const matchesQuery = `${product.name} ${product.description}`.toLowerCase().includes(query.toLowerCase());
       return matchesCategory && matchesQuery;
@@ -29,7 +29,7 @@ export function ProductGrid({ initialCategory = "all" }: { initialCategory?: str
     if (sort === "low") return [...result].sort((a, b) => a.price - b.price);
     if (sort === "high") return [...result].sort((a, b) => b.price - a.price);
     return [...result].sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
-  }, [category, query, sort]);
+  }, [category, initialProducts, query, sort]);
 
   return (
     <div>

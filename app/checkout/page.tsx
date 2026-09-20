@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/components/store/cart-context";
 import { formatCurrency } from "@/lib/utils";
+import { createOrder, isApiBackedProduct } from "@/lib/storefront-api";
 
 type DemoOrderPayload = {
   orderNumber: string;
@@ -29,6 +30,10 @@ type DemoOrderPayload = {
     color: string;
   }>;
 };
+
+function isApiConfigured() {
+  return Boolean(process.env.NEXT_PUBLIC_API_URL);
+}
 
 export default function CheckoutPage() {
   return <CheckoutContent />;
@@ -65,16 +70,36 @@ function CheckoutContent() {
     };
 
     try {
-      // The catalogue is still using prototype IDs. Until it is migrated to
-      // the .NET API, keep this UI flow explicitly local and never use a
-      // second backend. The production flow will POST typed product/variant
-      // IDs to ASP.NET Core at this same boundary.
+      if (isApiConfigured()) {
+        if (!items.every((item) => isApiBackedProduct(item.product, item.variantId))) {
+          throw new Error("السلة تحتوي على منتج غير مرتبط بكتالوج المنصة.");
+        }
+
+        const created = await createOrder({
+          customerName: payload.customerName,
+          customerPhone: payload.phone,
+          city: payload.city,
+          address: payload.address,
+          notes: payload.notes,
+          items: items.map((item) => ({
+            productId: item.product.apiId!,
+            variantId: item.variantId!,
+            quantity: item.quantity,
+          })),
+        });
+        clearCart();
+        router.push(`/success?order=${created.orderNumber}`);
+        return;
+      }
+
+      // Demo mode is used only when NEXT_PUBLIC_API_URL is absent. It keeps
+      // the visual prototype usable without introducing a second backend.
       window.localStorage.setItem("eleganza-last-order", JSON.stringify(payload));
       clearCart();
       router.push(`/success?order=${orderNumber}`);
     } catch {
       setSubmitting(false);
-      window.alert("تعذر حفظ الطلب محلياً. حاولي مرة ثانية.");
+      window.alert("تعذر إنشاء الطلب. تأكدي من بيانات المنتج والـ API ثم حاولي مرة ثانية.");
     }
   };
 

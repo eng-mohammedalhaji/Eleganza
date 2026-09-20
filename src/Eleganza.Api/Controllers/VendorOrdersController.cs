@@ -1,0 +1,31 @@
+using Eleganza.Application.Orders;
+using Eleganza.Contracts.Orders;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Eleganza.Api.Controllers;
+
+[ApiController]
+[Authorize(Roles = "VendorOwner,Admin")]
+[Route("api/vendor/orders")]
+public sealed class VendorOrdersController(OrderService orderService) : ControllerBase
+{
+    [HttpPost("{id:guid}/confirm")]
+    public async Task<ActionResult<OrderResponse>> Confirm(Guid id, CancellationToken cancellationToken)
+        => Ok(await orderService.ConfirmAsync(id, cancellationToken));
+
+    [HttpPost("{id:guid}/reject")]
+    public async Task<ActionResult<OrderResponse>> Reject(
+        Guid id,
+        [FromBody] string? reason,
+        CancellationToken cancellationToken)
+        => Ok(await orderService.RejectAsync(id, reason, cancellationToken));
+
+    [HttpPost("{id:guid}/delivered")]
+    public async Task<ActionResult<OrderResponse>> Delivered(Guid id, CancellationToken cancellationToken)
+        => Ok(await orderService.MarkDeliveredAsync(id, cancellationToken));
+
+    [HttpPost("{id:guid}/collected")]
+    public async Task<ActionResult<OrderResponse>> Collected(Guid id, CancellationToken cancellationToken)
+        => Ok(await orderService.MarkCollectedAsync(id, cancellationToken));
+}

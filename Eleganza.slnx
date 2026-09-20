@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Eleganza.Api/Eleganza.Api.csproj" />
+    <Project Path="src/Eleganza.Application/Eleganza.Application.csproj" />
+    <Project Path="src/Eleganza.Contracts/Eleganza.Contracts.csproj" />
+    <Project Path="src/Eleganza.Domain/Eleganza.Domain.csproj" />
+    <Project Path="src/Eleganza.Infrastructure/Eleganza.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Eleganza.IntegrationTests/Eleganza.IntegrationTests.csproj" />
+    <Project Path="tests/Eleganza.UnitTests/Eleganza.UnitTests.csproj" />
+  </Folder>
+</Solution>

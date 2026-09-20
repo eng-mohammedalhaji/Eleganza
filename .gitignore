@@ -1,0 +1,14 @@
+
+.env.local
+node_modules/
+.next/
+.pnpm-store/
+tsconfig.tsbuildinfo
+convex/_generated/
+
+# .NET build outputs
+bin/
+obj/
+TestResults/
+.vs/
+*.user

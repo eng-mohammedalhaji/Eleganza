@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<ProductService>();
         services.AddScoped<OrderService>();
         services.AddScoped<VendorShippingAccountService>();
+        services.AddScoped<VanexLocationService>();
         return services;
     }
 }

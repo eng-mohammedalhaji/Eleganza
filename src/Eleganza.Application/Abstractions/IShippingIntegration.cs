@@ -16,7 +16,10 @@ public sealed record ShippingOrderRequest(
     string CustomerName,
     string CustomerPhone,
     string City,
+    int? DeliveryCityId,
+    int? DeliverySubCityId,
     string Address,
+    string? MapUrl,
     string? Notes,
     decimal CashOnDeliveryAmount,
     IReadOnlyList<ShippingOrderItem> Items);
@@ -25,6 +28,13 @@ public sealed record ShippingOrderResult(
     bool Succeeded,
     string? ExternalOrderId,
     string? TrackingNumber,
+    string? Error);
+
+public sealed record ShippingLocation(string Id, string Name);
+
+public sealed record ShippingLocationsResult(
+    bool Succeeded,
+    IReadOnlyList<ShippingLocation> Locations,
     string? Error);
 
 public interface IShippingProvider
@@ -40,6 +50,17 @@ public interface IShippingProvider
         VendorShippingAccount account,
         string accessToken,
         ShippingOrderRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ShippingLocationsResult> GetCitiesAsync(
+        VendorShippingAccount account,
+        string accessToken,
+        CancellationToken cancellationToken = default);
+
+    Task<ShippingLocationsResult> GetSubCitiesAsync(
+        VendorShippingAccount account,
+        string accessToken,
+        string cityId,
         CancellationToken cancellationToken = default);
 }
 

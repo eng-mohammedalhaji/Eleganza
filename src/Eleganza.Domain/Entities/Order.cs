@@ -15,7 +15,10 @@ public sealed class Order
         string customerName,
         string customerPhone,
         string city,
+        int? deliveryCityId,
+        int? deliverySubCityId,
         string address,
+        string? mapUrl,
         string? notes,
         decimal subtotal,
         decimal shippingFee,
@@ -30,7 +33,10 @@ public sealed class Order
         CustomerName = customerName;
         CustomerPhone = customerPhone;
         City = city;
+        DeliveryCityId = deliveryCityId;
+        DeliverySubCityId = deliverySubCityId;
         Address = address;
+        MapUrl = mapUrl;
         Notes = notes;
         Subtotal = subtotal;
         ShippingFee = shippingFee;
@@ -55,7 +61,10 @@ public sealed class Order
     public string CustomerName { get; private set; } = string.Empty;
     public string CustomerPhone { get; private set; } = string.Empty;
     public string City { get; private set; } = string.Empty;
+    public int? DeliveryCityId { get; private set; }
+    public int? DeliverySubCityId { get; private set; }
     public string Address { get; private set; } = string.Empty;
+    public string? MapUrl { get; private set; }
     public string? Notes { get; private set; }
     public decimal Subtotal { get; private set; }
     public decimal ShippingFee { get; private set; }
@@ -85,7 +94,10 @@ public sealed class Order
         decimal shippingFee,
         PaymentMethod paymentMethod,
         string? idempotencyKey = null,
-        string? idempotencyFingerprint = null)
+        string? idempotencyFingerprint = null,
+        int? deliveryCityId = null,
+        int? deliverySubCityId = null,
+        string? mapUrl = null)
     {
         if (subtotal <= 0)
         {
@@ -97,8 +109,9 @@ public sealed class Order
             throw new ArgumentOutOfRangeException(nameof(shippingFee));
         }
 
-        return new Order(orderNumber, vendorId, customerId, customerName, customerPhone, city, address,
-            notes, subtotal, shippingFee, paymentMethod, idempotencyKey, idempotencyFingerprint);
+        return new Order(orderNumber, vendorId, customerId, customerName, customerPhone, city,
+            deliveryCityId, deliverySubCityId, address, mapUrl, notes, subtotal, shippingFee,
+            paymentMethod, idempotencyKey, idempotencyFingerprint);
     }
 
     public void AddItem(OrderItem item)

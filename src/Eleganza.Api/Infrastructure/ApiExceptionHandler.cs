@@ -13,17 +13,17 @@ public sealed class ApiExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var (status, title, detail) = exception switch
+        var (status, title, detail, code) = exception switch
         {
-            ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request.", exception.Message),
-            KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found.", exception.Message),
+            ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request.", exception.Message, "VALIDATION_ERROR"),
+            KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found.", exception.Message, "RESOURCE_NOT_FOUND"),
             UnauthorizedAccessException when httpContext.User.Identity?.IsAuthenticated == true
-                => (StatusCodes.Status403Forbidden, "Forbidden.", exception.Message),
-            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Authentication required.", exception.Message),
-            InvalidOperationException => (StatusCodes.Status409Conflict, "Operation rejected.", exception.Message),
-            DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "The resource changed. Retry the operation.", null),
-            DbUpdateException => (StatusCodes.Status409Conflict, "The request conflicts with existing data.", null),
-            _ => (StatusCodes.Status500InternalServerError, "Unexpected server error.", "An unexpected error occurred."),
+                => (StatusCodes.Status403Forbidden, "Forbidden.", exception.Message, "FORBIDDEN"),
+            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Authentication required.", exception.Message, "AUTHENTICATION_REQUIRED"),
+            InvalidOperationException => (StatusCodes.Status409Conflict, "Operation rejected.", exception.Message, "BUSINESS_RULE_VIOLATION"),
+            DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "The resource changed. Retry the operation.", "Reload the resource and retry.", "CONCURRENCY_CONFLICT"),
+            DbUpdateException => (StatusCodes.Status409Conflict, "The request conflicts with existing data.", "The request conflicts with existing data.", "DATA_CONFLICT"),
+            _ => (StatusCodes.Status500InternalServerError, "Unexpected server error.", "An unexpected error occurred.", "INTERNAL_ERROR"),
         };
 
         if (status >= 500)
@@ -36,6 +36,7 @@ public sealed class ApiExceptionHandler(
         }
 
         httpContext.Response.StatusCode = status;
+        httpContext.Response.ContentType = "application/problem+json";
         await problemDetails.WriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
@@ -45,6 +46,11 @@ public sealed class ApiExceptionHandler(
                 Title = title,
                 Detail = detail,
                 Instance = httpContext.Request.Path,
+                Extensions =
+                {
+                    ["code"] = code,
+                    ["traceId"] = httpContext.TraceIdentifier,
+                },
             },
         });
         return true;

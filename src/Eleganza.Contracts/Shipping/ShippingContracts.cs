@@ -4,8 +4,7 @@ namespace Eleganza.Contracts.Shipping;
 
 public sealed record ConnectVanexRequest(
     string AccessToken,
-    string? MerchantId,
-    string? BaseUrl);
+    string? MerchantId);
 
 public sealed record ShippingAccountResponse(
     string Provider,
@@ -15,3 +14,5 @@ public sealed record ShippingAccountResponse(
     DateTimeOffset? LastValidatedAt,
     string? LastError,
     DateTimeOffset UpdatedAt);
+
+public sealed record ShippingLocationResponse(string Id, string Name);

@@ -14,13 +14,30 @@ builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddHealthChecks();
+builder.Services.Configure<RateLimitOptions>(builder.Configuration.GetSection("RateLimits"));
+var rateLimitOptions = builder.Configuration.GetSection("RateLimits").Get<RateLimitOptions>()
+    ?? throw new InvalidOperationException("RateLimits configuration is required.");
+if (rateLimitOptions.AuthPermitLimit <= 0
+    || rateLimitOptions.AuthWindowSeconds <= 0
+    || rateLimitOptions.VendorLocationPermitLimit <= 0
+    || rateLimitOptions.VendorLocationWindowSeconds <= 0)
+{
+    throw new InvalidOperationException("All RateLimits values must be positive.");
+}
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("auth", limiterOptions =>
     {
-        limiterOptions.PermitLimit = 10;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.PermitLimit = rateLimitOptions.AuthPermitLimit;
+        limiterOptions.Window = TimeSpan.FromSeconds(rateLimitOptions.AuthWindowSeconds);
+        limiterOptions.QueueLimit = 0;
+        limiterOptions.AutoReplenishment = true;
+    });
+    options.AddFixedWindowLimiter("vendor-locations", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = rateLimitOptions.VendorLocationPermitLimit;
+        limiterOptions.Window = TimeSpan.FromSeconds(rateLimitOptions.VendorLocationWindowSeconds);
         limiterOptions.QueueLimit = 0;
         limiterOptions.AutoReplenishment = true;
     });
@@ -50,6 +67,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+app.UseHttpsRedirection();
 app.UseCors("Frontend");
 app.UseRateLimiter();
 app.UseAuthentication();

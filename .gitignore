@@ -1,5 +1,6 @@
 
 .env.local
+.data-protection-keys/
 node_modules/
 .next/
 .pnpm-store/

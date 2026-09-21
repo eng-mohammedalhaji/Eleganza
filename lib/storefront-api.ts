@@ -5,6 +5,7 @@ import {
   type Product,
   type StorefrontVariant,
 } from "@/lib/products";
+import { apiRequest } from "@/lib/api-client";
 
 export type StorefrontCategory = {
   name: string;
@@ -49,7 +50,10 @@ export type CreateOrderPayload = {
   customerName: string;
   customerPhone: string;
   city: string;
+  deliveryCityId?: number;
+  deliverySubCityId?: number;
   address: string;
+  mapUrl?: string;
   notes?: string;
   items: Array<{
     productId: string;
@@ -77,7 +81,6 @@ function toProduct(item: ApiProduct): Product {
     stock: variant.stock,
   }));
   const firstVariant = variants[0];
-  const fallback = getDemoProduct(item.slug);
   const media = [...item.media].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return {
@@ -95,8 +98,8 @@ function toProduct(item: ApiProduct): Product {
     stock: variants.reduce((total, variant) => total + variant.stock, 0),
     badge: item.isFeatured ? "مختارات إيليجانزا" : undefined,
     featured: item.isFeatured,
-    image: media[0]?.storageKey || fallback?.image || "/placeholder-dress.svg",
-    accent: fallback?.accent || "#e4b5ad",
+    image: media[0]?.storageKey || "/placeholder-dress.svg",
+    accent: "hsl(var(--muted))",
     variants,
   };
 }
@@ -109,11 +112,11 @@ export async function getStorefrontProducts(): Promise<Product[]> {
     const response = await fetch(`${baseUrl}/api/products`, {
       next: { revalidate: 60, tags: ["storefront-products"] },
     });
-    if (!response.ok) return demoProducts;
+    if (!response.ok) throw new Error("تعذر تحميل المنتجات من واجهة API.");
     const data = (await response.json()) as ApiProduct[];
     return data.map(toProduct);
-  } catch {
-    return demoProducts;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("تعذر تحميل المنتجات من واجهة API.");
   }
 }
 
@@ -126,10 +129,10 @@ export async function getStorefrontProduct(slug: string): Promise<Product | unde
       next: { revalidate: 60, tags: [`storefront-product:${slug}`] },
     });
     if (response.status === 404) return undefined;
-    if (!response.ok) return getDemoProduct(slug);
+    if (!response.ok) throw new Error("تعذر تحميل المنتج من واجهة API.");
     return toProduct((await response.json()) as ApiProduct);
-  } catch {
-    return getDemoProduct(slug);
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("تعذر تحميل المنتج من واجهة API.");
   }
 }
 
@@ -143,7 +146,7 @@ export async function getStorefrontCategories(
     const response = await fetch(`${baseUrl}/api/categories`, {
       next: { revalidate: 300, tags: ["storefront-categories"] },
     });
-    if (!response.ok) return demoCategories;
+    if (!response.ok) throw new Error("تعذر تحميل التصنيفات من واجهة API.");
     const data = (await response.json()) as ApiCategory[];
     return data.map((category) => ({
       name: category.name,
@@ -151,8 +154,8 @@ export async function getStorefrontCategories(
       description: category.description,
       count: storefrontProducts.filter((product) => product.category === category.slug).length,
     }));
-  } catch {
-    return demoCategories;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("تعذر تحميل التصنيفات من واجهة API.");
   }
 }
 
@@ -161,22 +164,9 @@ export function isApiBackedProduct(product: Product, variantId?: string) {
 }
 
 export async function createOrder(payload: CreateOrderPayload, idempotencyKey: string): Promise<CreatedOrder> {
-  const baseUrl = getApiBaseUrl();
-  if (!baseUrl) {
-    throw new Error("API URL is not configured.");
-  }
-
-  const response = await fetch(`${baseUrl}/api/orders`, {
+  return apiRequest<CreatedOrder>("/api/orders", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-    credentials: "include",
+    headers: { "Idempotency-Key": idempotencyKey },
     body: JSON.stringify(payload),
   });
-
-  if (!response.ok) {
-    const problem = (await response.json().catch(() => null)) as { detail?: string; title?: string } | null;
-    throw new Error(problem?.detail || problem?.title || "تعذر إنشاء الطلب.");
-  }
-
-  return (await response.json()) as CreatedOrder;
 }

@@ -2,6 +2,8 @@ export class ApiClientError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly code?: string,
+    public readonly traceId?: string,
   ) {
     super(message);
   }
@@ -28,7 +30,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as
-      | { detail?: string; title?: string; errors?: Record<string, string[]> }
+      | { detail?: string; title?: string; code?: string; traceId?: string; errors?: Record<string, string[]> }
       | null;
     const validationMessage = body?.errors
       ? Object.values(body.errors).flat().join(" ")
@@ -36,6 +38,8 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     throw new ApiClientError(
       validationMessage || body?.detail || body?.title || "تعذر تنفيذ العملية.",
       response.status,
+      body?.code,
+      body?.traceId,
     );
   }
 

@@ -100,6 +100,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.Property(order => order.CustomerName).HasMaxLength(120).IsRequired();
             entity.Property(order => order.CustomerPhone).HasMaxLength(30).IsRequired();
             entity.Property(order => order.City).HasMaxLength(80).IsRequired();
+            entity.Property(order => order.MapUrl).HasMaxLength(1000);
             entity.Property(order => order.Address).HasMaxLength(300).IsRequired();
             entity.Property(order => order.Notes).HasMaxLength(1000);
             entity.Property(order => order.Subtotal).HasPrecision(18, 2).IsRequired();

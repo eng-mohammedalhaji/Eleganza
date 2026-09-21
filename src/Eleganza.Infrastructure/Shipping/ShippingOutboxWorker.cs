@@ -142,7 +142,10 @@ public sealed class ShippingOutboxWorker(
                     order.CustomerName,
                     order.CustomerPhone,
                     order.City,
+                    order.DeliveryCityId,
+                    order.DeliverySubCityId,
                     order.Address,
+                    order.MapUrl,
                     order.Notes,
                     order.Total,
                     order.Items.Select(item => new ShippingOrderItem(

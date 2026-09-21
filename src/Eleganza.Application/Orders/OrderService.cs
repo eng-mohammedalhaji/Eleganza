@@ -45,6 +45,20 @@ public sealed class OrderService(
         var city = RequireText(request.City, nameof(request.City), 2, 80);
         var address = RequireText(request.Address, nameof(request.Address), 5, 300);
 
+        if ((request.DeliveryCityId.HasValue != request.DeliverySubCityId.HasValue)
+            || request.DeliveryCityId is <= 0
+            || request.DeliverySubCityId is <= 0)
+        {
+            throw new ArgumentException("Delivery city and sub-city identifiers must be supplied together and be positive.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.MapUrl)
+            && (!Uri.TryCreate(request.MapUrl.Trim(), UriKind.Absolute, out var mapUri)
+                || mapUri.Scheme is not (Uri.UriSchemeHttps or Uri.UriSchemeHttp)))
+        {
+            throw new ArgumentException("MapUrl must be an absolute HTTP(S) URL.", nameof(request.MapUrl));
+        }
+
         var duplicateVariants = request.Items.GroupBy(item => item.VariantId).FirstOrDefault(group => group.Count() > 1);
         if (duplicateVariants is not null)
         {
@@ -104,7 +118,10 @@ public sealed class OrderService(
             shippingFee,
             PaymentMethod.CashOnDelivery,
             normalizedIdempotencyKey,
-            requestFingerprint);
+            requestFingerprint,
+            request.DeliveryCityId,
+            request.DeliverySubCityId,
+            string.IsNullOrWhiteSpace(request.MapUrl) ? null : request.MapUrl.Trim());
 
         foreach (var prepared in preparedItems)
         {
@@ -333,6 +350,9 @@ public sealed class OrderService(
             city = request.City?.Trim(),
             address = request.Address?.Trim(),
             notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+            deliveryCityId = request.DeliveryCityId,
+            deliverySubCityId = request.DeliverySubCityId,
+            mapUrl = request.MapUrl?.Trim(),
             items = request.Items?
                 .OrderBy(item => item.ProductId)
                 .ThenBy(item => item.VariantId)
@@ -378,7 +398,10 @@ public sealed class OrderService(
                 history.ActorUserId,
                 history.Reason,
                 history.CreatedAt)).ToArray(),
-            order.CreatedAt);
+            order.CreatedAt,
+            order.DeliveryCityId,
+            order.DeliverySubCityId,
+            order.MapUrl);
 
     private sealed record SubmitShippingOrderPayload(Guid OrderId);
 }

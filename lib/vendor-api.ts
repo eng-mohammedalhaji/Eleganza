@@ -29,7 +29,30 @@ export type VendorApplication = {
 export type VanexConnection = {
   accessToken: string;
   merchantId?: string;
-  baseUrl?: string;
+};
+
+export type VanexLocation = {
+  id: string;
+  name: string;
+};
+
+export type VendorCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+};
+
+export type VendorProduct = {
+  id: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  description: string;
+  status: number | string;
+  reviewNote?: string | null;
+  variants: Array<{ id: string; size: string; color: string; sku: string; price: number; stock: number }>;
+  media: Array<{ id: string; storageKey: string; altText?: string | null; sortOrder: number }>;
 };
 
 export async function getMyVendor() {
@@ -72,4 +95,38 @@ export function disconnectVanex() {
   return apiRequest<ShippingAccount>("/api/vendors/me/shipping/vanex", {
     method: "DELETE",
   });
+}
+
+export function getVendorVanexCities(vendorId: string) {
+  return apiRequest<VanexLocation[]>(`/api/vendors/${vendorId}/shipping/vanex/cities`);
+}
+
+export function getVendorVanexSubCities(vendorId: string, cityId: string) {
+  return apiRequest<VanexLocation[]>(
+    `/api/vendors/${vendorId}/shipping/vanex/cities/${encodeURIComponent(cityId)}/subcities`,
+  );
+}
+
+export function getVendorCategories() {
+  return apiRequest<VendorCategory[]>("/api/categories");
+}
+
+export function getVendorProducts() {
+  return apiRequest<VendorProduct[]>("/api/vendor/products");
+}
+
+export function createVendorProduct(payload: { categoryId: string; name: string; slug: string; description: string }) {
+  return apiRequest<VendorProduct>("/api/products", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function addProductVariant(productId: string, payload: { size: string; color: string; sku: string; price: number; stock: number }) {
+  return apiRequest<VendorProduct>(`/api/products/${productId}/variants`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function addProductMedia(productId: string, payload: { storageKey: string; altText?: string; sortOrder: number }) {
+  return apiRequest<VendorProduct>(`/api/products/${productId}/media`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function submitVendorProduct(productId: string) {
+  return apiRequest<VendorProduct>(`/api/products/${productId}/submit`, { method: "POST" });
 }

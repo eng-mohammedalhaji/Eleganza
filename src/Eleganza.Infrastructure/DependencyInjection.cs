@@ -5,6 +5,8 @@ using Eleganza.Infrastructure.Repositories;
 using Eleganza.Infrastructure.Orders;
 using Eleganza.Infrastructure.Shipping;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +35,24 @@ public static class DependencyInjection
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<AppDbContext>();
 
+        var security = configuration.GetSection("Security");
+        var cookieName = security["CookieName"];
+        if (string.IsNullOrWhiteSpace(cookieName))
+        {
+            throw new InvalidOperationException("Security:CookieName is required.");
+        }
+
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.Cookie.Name = cookieName;
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SameSite = SameSiteMode.Strict;
+            options.Cookie.SecurePolicy = security.GetValue<bool>("RequireHttps")
+                ? CookieSecurePolicy.Always
+                : CookieSecurePolicy.SameAsRequest;
+            options.SlidingExpiration = true;
+        });
+
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IVendorRepository, VendorRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -41,9 +61,31 @@ public static class DependencyInjection
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IVendorShippingAccountRepository, VendorShippingAccountRepository>();
         services.AddScoped<ISecretProtector, DataProtectionSecretProtector>();
-        services.AddDataProtection();
+        var dataProtection = configuration.GetSection("DataProtection");
+        var keyRingPath = dataProtection["KeyRingPath"];
+        var dataProtectionBuilder = services.AddDataProtection();
+        if (!string.IsNullOrWhiteSpace(keyRingPath))
+        {
+            dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(keyRingPath));
+        }
+        else if (dataProtection.GetValue<bool>("RequirePersistentKeys"))
+        {
+            throw new InvalidOperationException("DataProtection:KeyRingPath is required when persistent keys are enabled.");
+        }
         services.Configure<VanexOptions>(configuration.GetSection("Vanex"));
-        services.AddHttpClient<IShippingProvider, VanexShippingProvider>();
+        services.AddHttpClient<IShippingProvider, VanexShippingProvider>((provider, client) =>
+        {
+            var seconds = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<VanexOptions>>().Value.HttpTimeoutSeconds;
+            if (seconds <= 0)
+            {
+                throw new InvalidOperationException("Vanex:HttpTimeoutSeconds must be positive.");
+            }
+
+            client.Timeout = TimeSpan.FromSeconds(seconds);
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AllowAutoRedirect = false,
+        });
         services.Configure<ShippingOptions>(configuration.GetSection("Shipping"));
         services.AddSingleton<IShippingFeeCalculator, FixedShippingFeeCalculator>();
         services.AddScoped<IIdentityRoleService, IdentityRoleService>();

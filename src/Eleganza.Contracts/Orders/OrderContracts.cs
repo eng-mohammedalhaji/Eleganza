@@ -13,7 +13,10 @@ public sealed record CreateOrderRequest(
     string City,
     string Address,
     string? Notes,
-    IReadOnlyList<CreateOrderItemRequest> Items);
+    IReadOnlyList<CreateOrderItemRequest> Items,
+    int? DeliveryCityId = null,
+    int? DeliverySubCityId = null,
+    string? MapUrl = null);
 
 public sealed record OrderItemResponse(
     Guid ProductId,
@@ -54,4 +57,7 @@ public sealed record OrderResponse(
     string? ShippingError,
     IReadOnlyList<OrderItemResponse> Items,
     IReadOnlyList<OrderStatusHistoryResponse> StatusHistory,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    int? DeliveryCityId = null,
+    int? DeliverySubCityId = null,
+    string? MapUrl = null);

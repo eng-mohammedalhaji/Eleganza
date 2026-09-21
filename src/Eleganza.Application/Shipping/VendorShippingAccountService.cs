@@ -37,7 +37,7 @@ public sealed class VendorShippingAccountService(
         account.MarkPendingValidation(
             secretProtector.Protect(request.AccessToken.Trim()),
             request.MerchantId,
-            request.BaseUrl);
+            null);
 
         var validation = await shippingProvider.ValidateCredentialsAsync(account, request.AccessToken.Trim(), cancellationToken);
         if (validation.IsValid)

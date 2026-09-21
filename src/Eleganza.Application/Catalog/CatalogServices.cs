@@ -173,6 +173,16 @@ public sealed class ProductService(
         CancellationToken cancellationToken = default)
         => (await products.ListAsync(null, null, status, null, cancellationToken)).Select(product => Map(product)).ToArray();
 
+    public async Task<IReadOnlyList<ProductResponse>> ListMineAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var ownerId = RequireUserId();
+        var vendor = await vendors.GetByOwnerIdAsync(ownerId, cancellationToken)
+            ?? throw new KeyNotFoundException("Vendor profile was not found.");
+        return (await products.ListAsync(vendor.Id, null, null, null, cancellationToken))
+            .Select(product => Map(product)).ToArray();
+    }
+
     private async Task<Product> GetOwnedProductAsync(Guid productId, CancellationToken cancellationToken)
     {
         var product = await GetRequiredAsync(productId, cancellationToken);

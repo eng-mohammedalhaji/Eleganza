@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Eleganza.Domain\Eleganza.Domain.csproj" />
     <ProjectReference Include="..\..\src\Eleganza.Application\Eleganza.Application.csproj" />
+    <ProjectReference Include="..\..\src\Eleganza.Infrastructure\Eleganza.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
